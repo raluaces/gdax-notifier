@@ -4,6 +4,11 @@ import gdax
 import configparser
 import json
 from twilio.rest import Client
+import os
+
+abspath = os.path.abspath(__file__)
+dname = os.path.dirname(abspath)
+os.chdir(dname)
 
 config = configparser.ConfigParser()
 config.read('settings.ini')

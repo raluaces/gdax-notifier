@@ -55,9 +55,11 @@ with open(KNOWN_ORDER_DATA_FILE, 'r') as raw_disk_order_data:
     raw_disk_order_data = raw_disk_order_data.read()
 KNOWN_ORDER_DATA = json.loads(raw_disk_order_data)
 
-auth_client = gdax.AuthenticatedClient(API_KEY, API_SECRET, API_PASSPHRASE)
-
-gdax_account = auth_client.get_accounts()
+try:
+    auth_client = gdax.AuthenticatedClient(API_KEY, API_SECRET, API_PASSPHRASE)
+    gdax_account = auth_client.get_accounts()
+except:
+    sys.exit('Failed to access GDAX API.')
 
 
 #for wallet in gdax_account:

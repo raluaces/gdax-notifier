@@ -15,7 +15,7 @@ config = configparser.ConfigParser()
 config.read('settings.ini')
 
 try:
-    DEBUG = config['Preferences']['debug']
+    DEBUG = config.getboolean('Preferences','debug')
 except:
     DEBUG = False
 

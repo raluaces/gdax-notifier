@@ -1,0 +1,3 @@
+twilio==6.8.3
+configparser==3.5.0
+gdax==1.0.6

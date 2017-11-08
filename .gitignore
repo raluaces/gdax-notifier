@@ -1,2 +1,4 @@
 settings.ini
 orderdata.json
+*.iml
+.idea/

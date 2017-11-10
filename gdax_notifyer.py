@@ -6,6 +6,7 @@ import json
 from twilio.rest import Client
 import os
 import os.path
+import logging
 
 abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
@@ -17,6 +18,7 @@ config.read('settings.ini')
 DEBUG = config.getboolean('Preferences','debug', fallback=False)
 
 if DEBUG:
+    logging.debug('Running in debug mode.')
     print('[DEBUG] - Running in debug mode.')
 
 API_KEY = config['GDAX_API']['key'].strip('\'')
@@ -25,11 +27,22 @@ API_PASSPHRASE = config['GDAX_API']['passphrase'].strip('\'')
 
 USER_PHONE = config['User']['phone']
 
+logging.basicConfig(
+    filename=config['Preferences']['logfile'],
+    filemode='a',
+    format=('%(asctime)s - %(levelname)s '
+            '%(module)s.%(funcName)s:%(lineno)d - '
+            '%(message)s'),
+    level=logging.getLevelName(config['Preferences']['loglevel']),
+)
+
+logger = logging.getLogger(__name__)
+
 twilio_client = Client(config['Twilio']['account'], config['Twilio']['token'])
 
 def send_sms(message, tophone):
     if DEBUG:
-        print('DEBUG MODE ACTIVE - no notifications sent.')
+        logger.debug('DEBUG MODE ACTIVE - notifications NOT sent.')
         return
     twilio_client.messages.create(to=tophone, from_=config['Twilio']['number'],
                                  body=message)
@@ -38,11 +51,12 @@ def send_sms(message, tophone):
 KNOWN_ORDER_DATA_FILE = config['Preferences']['orderfile']
 
 if not os.path.isfile(KNOWN_ORDER_DATA_FILE):
-    print('First run creating {}...'.format(KNOWN_ORDER_DATA_FILE))
+    logger.info('First run creating {}...'.format(KNOWN_ORDER_DATA_FILE))
     with open(KNOWN_ORDER_DATA_FILE, "w") as newfile:
         newfile.write("")
         newfile.close()
 
+logger.info('Reading {}'.format(KNOWN_ORDER_DATA_FILE))
 with open(KNOWN_ORDER_DATA_FILE, 'r') as raw_disk_order_data:
     raw_disk_order_data = raw_disk_order_data.read()
 
@@ -51,10 +65,14 @@ try:
 except:
     KNOWN_ORDER_DATA = []
 
+logger.debug('KNOWN_ORDER_DATA = {}'.format(KNOWN_ORDER_DATA))
+
 try:
     auth_client = gdax.AuthenticatedClient(API_KEY, API_SECRET, API_PASSPHRASE)
     gdax_account = auth_client.get_accounts()
+    logger.debug('Connected to GDAX and acquired account.')
 except:
+    logger.info('Failed to access GDAX API aborting.')
     sys.exit('Failed to access GDAX API.')
 
 
@@ -63,7 +81,9 @@ except:
 #    print('{} Holding:{}'.format(wallet['currency'], wallet['hold']))
 #    print('')
 
+logger.debug('Loading currently open orders from API.')
 API_OPEN_ORDERS = auth_client.get_orders()
+logger.debug('Currently open orders = {}'.format(API_OPEN_ORDERS))
 
 # Make an array of order IDs for easy matching.
 API_ORDER_IDS = []
@@ -78,15 +98,13 @@ for open_order_array in KNOWN_ORDER_DATA:
         KNOWN_ORDER_IDS.append(open_order['id'])
         # Check if an order we knew about went away, add to array of filled orders to notify about.
         if open_order['id'] in API_ORDER_IDS:
-            if DEBUG:
-                print('[DEBUG] - The order {} has NOT been filled.'.format(open_order['id']))
+            logger.debug('The order {} has NOT been filled. Continuing.'.format(open_order['id']))
         else:
             try:
                 if auth_client.get_order(open_order['id'])['done_reason'] == "filled":
-                    if DEBUG:
-                        print('[DEBUG] - The order {} has been filled.'.format(open_order['id']))
+                    logger.info('The order {} has been filled.'.format(open_order['id']))
                     send_sms(
-                        'The {} order of {} has been filled for {} at {}. ID: {}'.format(
+                        'The {} order of {} has been filled for {} at ${}USD. ID: {}'.format(
                             open_order['side'],
                             open_order['product_id'],
                             open_order['size'],
@@ -95,10 +113,9 @@ for open_order_array in KNOWN_ORDER_DATA:
                         USER_PHONE
                     )
             except KeyError:
-                if DEBUG:
-                    print('[DEBUG] - The order {} has been canceled.'.format(open_order['id']))
+                logger.info('The order {} has been canceled.'.format(open_order['id']))
                 send_sms(
-                    'The {} order of {} has been filled for {} at {}. ID: {}'.format(
+                    'The {} order of {} has been canceled for {} at ${}USD. ID: {}'.format(
                         open_order['side'],
                         open_order['product_id'],
                         open_order['size'],
@@ -112,15 +129,12 @@ for open_order_array in KNOWN_ORDER_DATA:
 for open_orders_array in API_OPEN_ORDERS:
     for open_order in open_orders_array:
         if open_order['id'] in KNOWN_ORDER_IDS:
-            if DEBUG:
-                print('[DEBUG] - We know about order {}. continuing...'.format(open_order['id']))
+            logger.debug('Order {} is still open. continuing...'.format(open_order['id']))
         else:
-            if DEBUG:
-                print('[DEBUG] - The order {} is a NEW Order'.format(open_order['id']))
-            KNOWN_ORDER_DATA.append(open_order)
-            #send notification about new order here
+            logger.info('The order {} is a NEW Order. Sending notification.'.format(open_order['id']))
+            KNOWN_ORDER_DATA.append(open_order) # add this new order to known order array to be written to file
             send_sms(
-                'There is a new {} order of {} for {} at {}. ID: {}'.format(
+                'There is a new {} order of {} for {} at ${}USD. ID: {}'.format(
                 open_order['side'],
                 open_order['product_id'],
                 open_order['size'],
@@ -131,6 +145,9 @@ for open_orders_array in API_OPEN_ORDERS:
 
 
 # Write the known order array to disk
+logger.debug('Writing known order data file to disk.')
 orderfile = open(KNOWN_ORDER_DATA_FILE, 'w')
 orderfile.write(str(json.dumps(API_OPEN_ORDERS)))
 orderfile.close()
+
+logger.debug('Script run complete.')

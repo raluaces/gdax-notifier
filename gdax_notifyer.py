@@ -43,7 +43,6 @@ if not os.path.isfile(KNOWN_ORDER_DATA_FILE):
         newfile.write("")
         newfile.close()
 
-
 with open(KNOWN_ORDER_DATA_FILE, 'r') as raw_disk_order_data:
     raw_disk_order_data = raw_disk_order_data.read()
 
@@ -72,9 +71,6 @@ for open_orders_array in API_OPEN_ORDERS:
     for open_order in open_orders_array:
         API_ORDER_IDS.append(open_order['id'])
 
-if DEBUG:
-    print(API_ORDER_IDS)
-
 # Make an array of known order IDs for easy matching later.
 KNOWN_ORDER_IDS= []
 for open_order_array in KNOWN_ORDER_DATA:
@@ -85,16 +81,31 @@ for open_order_array in KNOWN_ORDER_DATA:
             if DEBUG:
                 print('[DEBUG] - The order {} has NOT been filled.'.format(open_order['id']))
         else:
-            if DEBUG:
-                print('[DEBUG] - The order {} has been filled or canceled.'.format(open_order['id']))
-            send_sms('The {} order of {} has been filled for {} at {}. ID" {}'.format(
-                open_order['side'],
-                open_order['product_id'],
-                open_order['size'],
-                open_order['price'],
-                open_order['id']),
-                USER_PHONE
-            )
+            try:
+                if auth_client.get_order(open_order['id'])['done_reason'] == "filled":
+                    if DEBUG:
+                        print('[DEBUG] - The order {} has been filled.'.format(open_order['id']))
+                    send_sms(
+                        'The {} order of {} has been filled for {} at {}. ID: {}'.format(
+                            open_order['side'],
+                            open_order['product_id'],
+                            open_order['size'],
+                            open_order['price'],
+                            open_order['id']),
+                        USER_PHONE
+                    )
+            except KeyError:
+                if DEBUG:
+                    print('[DEBUG] - The order {} has been canceled.'.format(open_order['id']))
+                send_sms(
+                    'The {} order of {} has been filled for {} at {}. ID: {}'.format(
+                        open_order['side'],
+                        open_order['product_id'],
+                        open_order['size'],
+                        open_order['price'],
+                        open_order['id']),
+                    USER_PHONE
+                )
 
 
 # Check if there is a new order we dont know about.
@@ -108,7 +119,8 @@ for open_orders_array in API_OPEN_ORDERS:
                 print('[DEBUG] - The order {} is a NEW Order'.format(open_order['id']))
             KNOWN_ORDER_DATA.append(open_order)
             #send notification about new order here
-            send_sms('There is a new {} order of {} for {} at {}. ID: {}'.format(
+            send_sms(
+                'There is a new {} order of {} for {} at {}. ID: {}'.format(
                 open_order['side'],
                 open_order['product_id'],
                 open_order['size'],

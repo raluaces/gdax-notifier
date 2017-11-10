@@ -21,10 +21,6 @@ if DEBUG:
     logging.debug('Running in debug mode.')
     print('[DEBUG] - Running in debug mode.')
 
-API_KEY = config['GDAX_API']['key'].strip('\'')
-API_SECRET = config['GDAX_API']['secret'].strip('\'')
-API_PASSPHRASE = config['GDAX_API']['passphrase'].strip('\'')
-
 USER_PHONE = config['User']['phone']
 
 logging.basicConfig(
@@ -44,6 +40,7 @@ def send_sms(message, tophone):
     if DEBUG:
         logger.debug('DEBUG MODE ACTIVE - notifications NOT sent.')
         return
+    logger.debug('Notification send to {}.'.format(tophone))
     twilio_client.messages.create(to=tophone, from_=config['Twilio']['number'],
                                  body=message)
 
@@ -68,7 +65,11 @@ except:
 logger.debug('KNOWN_ORDER_DATA = {}'.format(KNOWN_ORDER_DATA))
 
 try:
-    auth_client = gdax.AuthenticatedClient(API_KEY, API_SECRET, API_PASSPHRASE)
+    auth_client = gdax.AuthenticatedClient(
+        config['GDAX_API']['key'].strip('\''),
+        config['GDAX_API']['secret'].strip('\''),
+        config['GDAX_API']['passphrase'].strip('\'')
+    )
     gdax_account = auth_client.get_accounts()
     logger.debug('Connected to GDAX and acquired account.')
 except:

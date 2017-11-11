@@ -17,12 +17,6 @@ config.read('settings.ini')
 
 DEBUG = config.getboolean('Preferences','debug', fallback=False)
 
-if DEBUG:
-    logging.debug('Running in debug mode.')
-    print('[DEBUG] - Running in debug mode.')
-
-USER_PHONE = config['User']['phone']
-
 logging.basicConfig(
     filename=config['Preferences']['logfile'],
     filemode='a',
@@ -34,13 +28,25 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+if DEBUG:
+    logger.debug('Running in debug mode.')
+    print('[DEBUG] - Running in debug mode.')
+
+# Get user data
+USER_PHONE = config['User']['phone']
+# get user notification preferences, 3 is all, 2 is all except new orders, 1 is only order fill
+NOTIFICATION_LEVEL = int(config['User']['notification_level'])
+logger.debug('Running for user {} on notifciation level {}.'.format(USER_PHONE, NOTIFICATION_LEVEL))
+
+logger.debug('Establishing twilio client.')
 twilio_client = Client(config['Twilio']['account'], config['Twilio']['token'])
+
 
 def send_sms(message, tophone):
     if DEBUG:
         logger.debug('DEBUG MODE ACTIVE - notifications NOT sent.')
         return
-    logger.debug('Notification send to {}.'.format(tophone))
+    logger.debug('Notification - {} - sent to {}.'.format(message, tophone))
     twilio_client.messages.create(to=tophone, from_=config['Twilio']['number'],
                                  body=message)
 
@@ -64,6 +70,7 @@ except:
 
 logger.debug('KNOWN_ORDER_DATA = {}'.format(KNOWN_ORDER_DATA))
 
+
 try:
     auth_client = gdax.AuthenticatedClient(
         config['GDAX_API']['key'].strip('\''),
@@ -75,7 +82,6 @@ try:
 except:
     logger.info('Failed to access GDAX API aborting.')
     sys.exit('Failed to access GDAX API.')
-
 
 #for wallet in gdax_account:
 #    print('{} Balance:{}'.format(wallet['currency'], wallet['balance']))
@@ -91,6 +97,7 @@ API_ORDER_IDS = []
 for open_orders_array in API_OPEN_ORDERS:
     for open_order in open_orders_array:
         API_ORDER_IDS.append(open_order['id'])
+
 
 # Make an array of known order IDs for easy matching later.
 KNOWN_ORDER_IDS= []
@@ -115,15 +122,16 @@ for open_order_array in KNOWN_ORDER_DATA:
                     )
             except KeyError:
                 logger.info('The order {} has been canceled.'.format(open_order['id']))
-                send_sms(
-                    'The {} order of {} has been canceled for {} at ${}USD. ID: {}'.format(
-                        open_order['side'],
-                        open_order['product_id'],
-                        open_order['size'],
-                        open_order['price'],
-                        open_order['id']),
-                    USER_PHONE
-                )
+                if NOTIFICATION_LEVEL >= 2:
+                    send_sms(
+                        'The {} order of {} has been canceled for {} at ${}USD. ID: {}'.format(
+                            open_order['side'],
+                            open_order['product_id'],
+                            open_order['size'],
+                            open_order['price'],
+                            open_order['id']),
+                        USER_PHONE
+                    )
 
 
 # Check if there is a new order we dont know about.
@@ -132,17 +140,18 @@ for open_orders_array in API_OPEN_ORDERS:
         if open_order['id'] in KNOWN_ORDER_IDS:
             logger.debug('Order {} is still open. continuing...'.format(open_order['id']))
         else:
-            logger.info('The order {} is a NEW Order. Sending notification.'.format(open_order['id']))
+            logger.info('The order {} is a NEW Order.'.format(open_order['id']))
             KNOWN_ORDER_DATA.append(open_order) # add this new order to known order array to be written to file
-            send_sms(
-                'There is a new {} order of {} for {} at ${}USD. ID: {}'.format(
-                open_order['side'],
-                open_order['product_id'],
-                open_order['size'],
-                open_order['price'],
-                open_order['id']),
-                USER_PHONE
-            )
+            if NOTIFICATION_LEVEL >= 2:
+                send_sms(
+                    'There is a new {} order of {} for {} at ${}USD. ID: {}'.format(
+                    open_order['side'],
+                    open_order['product_id'],
+                    open_order['size'],
+                    open_order['price'],
+                    open_order['id']),
+                    USER_PHONE
+                )
 
 
 # Write the known order array to disk

@@ -160,4 +160,4 @@ orderfile = open(KNOWN_ORDER_DATA_FILE, 'w')
 orderfile.write(str(json.dumps(API_OPEN_ORDERS)))
 orderfile.close()
 
-logger.debug('Script run complete.')
+logger.info('GDAX Notifier run complete.')

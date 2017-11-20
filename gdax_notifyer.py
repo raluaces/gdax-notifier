@@ -1,4 +1,7 @@
 #!/usr/bin/env python3.6
+# Cron job for sending notifications for GDAX.
+# Ralph Luaces
+# Version 0.1
 
 import gdax
 import configparser
@@ -36,6 +39,7 @@ if DEBUG:
 USER_PHONE = config['User']['phone']
 # get user notification preferences, 3 is all, 2 is all except new orders, 1 is only order fill
 NOTIFICATION_LEVEL = int(config['User']['notification_level'])
+if
 logger.debug('Running for user {} on notifciation level {}.'.format(USER_PHONE, NOTIFICATION_LEVEL))
 
 logger.debug('Establishing twilio client.')
@@ -112,7 +116,7 @@ for open_order_array in KNOWN_ORDER_DATA:
                 if auth_client.get_order(open_order['id'])['done_reason'] == "filled":
                     logger.info('The order {} has been filled.'.format(open_order['id']))
                     send_sms(
-                        'The {} order of {} has been filled for {} at ${}USD. ID: {}'.format(
+                        'The {} order of {} has been filled for {} at ${} USD. ID: {}'.format(
                             open_order['side'],
                             open_order['product_id'],
                             open_order['size'],
@@ -121,10 +125,11 @@ for open_order_array in KNOWN_ORDER_DATA:
                         USER_PHONE
                     )
             except KeyError:
-                logger.info('The order {} has been canceled.'.format(open_order['id']))
+                logger.debug('The order {} has been canceled.'.format(open_order['id']))
                 if NOTIFICATION_LEVEL >= 2:
+                    logger.info('Order {} cancellation notification sent!')
                     send_sms(
-                        'The {} order of {} has been canceled for {} at ${}USD. ID: {}'.format(
+                        'The {} order of {} has been canceled for {} at ${} USD. ID: {}'.format(
                             open_order['side'],
                             open_order['product_id'],
                             open_order['size'],
@@ -140,11 +145,12 @@ for open_orders_array in API_OPEN_ORDERS:
         if open_order['id'] in KNOWN_ORDER_IDS:
             logger.debug('Order {} is still open. continuing...'.format(open_order['id']))
         else:
-            logger.info('The order {} is a NEW Order.'.format(open_order['id']))
+            logger.debug('The order {} is a NEW Order.'.format(open_order['id']))
             KNOWN_ORDER_DATA.append(open_order) # add this new order to known order array to be written to file
             if NOTIFICATION_LEVEL >= 2:
+                logger.info('New sell order notification for order {} sent!'.format(open_order['id']))
                 send_sms(
-                    'There is a new {} order of {} for {} at ${}USD. ID: {}'.format(
+                    'There is a new {} order of {} for {} at ${} USD. ID: {}'.format(
                     open_order['side'],
                     open_order['product_id'],
                     open_order['size'],
@@ -161,3 +167,5 @@ orderfile.write(str(json.dumps(API_OPEN_ORDERS)))
 orderfile.close()
 
 logger.info('GDAX Notifier run complete.')
+
+sys.exit()

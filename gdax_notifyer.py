@@ -7,7 +7,7 @@ import gdax
 import configparser
 import json
 from twilio.rest import Client
-import os
+import os, sys
 import os.path
 import logging
 
@@ -63,7 +63,7 @@ if not os.path.isfile(KNOWN_ORDER_DATA_FILE):
         newfile.write("")
         newfile.close()
 
-logger.info('Reading {}'.format(KNOWN_ORDER_DATA_FILE))
+logger.debug('Reading {}'.format(KNOWN_ORDER_DATA_FILE))
 with open(KNOWN_ORDER_DATA_FILE, 'r') as raw_disk_order_data:
     raw_disk_order_data = raw_disk_order_data.read()
 
@@ -166,6 +166,6 @@ orderfile = open(KNOWN_ORDER_DATA_FILE, 'w')
 orderfile.write(str(json.dumps(API_OPEN_ORDERS)))
 orderfile.close()
 
-logger.info('GDAX Notifier run complete.')
+logger.info('GDAX Notifier Job run complete.')
 
 sys.exit()

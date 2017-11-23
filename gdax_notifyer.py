@@ -1,7 +1,7 @@
 #!/usr/bin/env python3.6
 # Cron job for sending notifications for GDAX.
 # Ralph Luaces
-# Version 0.1
+# Version 0.1.1
 
 import gdax
 import configparser

@@ -39,7 +39,7 @@ if DEBUG:
 USER_PHONE = config['User']['phone']
 # get user notification preferences, 3 is all, 2 is all except new orders, 1 is only order fill
 NOTIFICATION_LEVEL = int(config['User']['notification_level'])
-logger.debug('Running for user {} on notifciation level {}.'.format(USER_PHONE, NOTIFICATION_LEVEL))
+logger.debug('Running for user {} on notification level {}.'.format(USER_PHONE, NOTIFICATION_LEVEL))
 
 logger.debug('Establishing twilio client.')
 twilio_client = Client(config['Twilio']['account'], config['Twilio']['token'])
